@@ -135,6 +135,55 @@ def calcular_D_KL(contexto, nuevo_texto):
     # D_KL (P_prev || P_new)
     return float(entropy(probs_prev, probs_new))
 
+
+def generar_respuesta(contexto, user_input, max_new_tokens=120, temperature=0.8, top_p=0.9):
+    """
+    Genera una respuesta usando el modelo de lenguaje.
+    Devuelve `None` si la generación falla (se puede usar fallback).
+    """
+    # Construir prompt simple con rol Usuario/IA
+    prompt = (contexto + "\n" if contexto.strip() else "") + "Usuario: " + user_input + "\nIA:"
+    try:
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
+    except Exception:
+        return None
+    input_ids = inputs["input_ids"]
+
+    # Asegurar pad_token
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    max_length = min(1024, input_ids.shape[1] + max_new_tokens)
+    try:
+        with torch.no_grad():
+            generated = model.generate(
+                input_ids=input_ids,
+                max_length=max_length,
+                do_sample=True,
+                temperature=temperature,
+                top_p=top_p,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                num_return_sequences=1,
+            )
+    except Exception:
+        return None
+
+    text = tokenizer.decode(generated[0], skip_special_tokens=True)
+    # Extraer la parte generada después del prompt
+    if text.startswith(prompt):
+        reply = text[len(prompt):].strip()
+    else:
+        if "IA:" in text:
+            reply = text.split("IA:")[-1].strip()
+        else:
+            # Fallback: tomar todo lo generado y recortar el prompt original si aparece
+            reply = text.replace(prompt, "").strip()
+
+    # Devolver la primera línea para respuestas más limpias
+    reply = reply.splitlines()[0].strip()
+    return reply
+
 # ===========================
 # SIMULACIÓN DE CONVERSACIÓN
 # ===========================
@@ -211,10 +260,20 @@ while True:
     if C_n < 0.5:
         print("\n>> El silencio se vuelve un espejo roto. Que necesitas para romper el ciclo?")
     # 9. Generar respuesta del chatbot (simulada)
-    if A >= 0:
-        respuesta = "¡Interesante! ¿Quieres profundizar en esto?"
-    else:
-        respuesta = "No entiendo tu punto. Repite con más claridad."
+    # 9. Generar respuesta del chatbot (real, usando el modelo)
+    respuesta = None
+    try:
+        respuesta = generar_respuesta(contexto, user_input)
+    except Exception:
+        respuesta = None
+
+    # Fallback a comportamiento simulado si la generación falla
+    if not respuesta:
+        if A >= 0:
+            respuesta = "¡Interesante! ¿Quieres profundizar en esto?"
+        else:
+            respuesta = "No entiendo tu punto. Repite con más claridad."
+
     historial.append(respuesta)
     print(f"IA: {respuesta}")
 
