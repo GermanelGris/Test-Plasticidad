@@ -1,5 +1,23 @@
-transformers
-torch
-numpy
-scipy
-sentence-transformers
+# ─────────────────────────────────────────────
+# requirements.txt — Plasticity-Test.py
+# Instalar con: pip install -r requirements.txt
+# ─────────────────────────────────────────────
+
+# Deep learning
+torch>=2.0.0
+
+# Modelos de lenguaje (GPT2 + sentiment pipeline)
+transformers>=4.40.0
+
+# Embeddings semánticos
+sentence-transformers>=3.0.0
+
+# Machine learning / métricas
+scikit-learn>=1.4.0
+
+# Cálculo numérico
+numpy>=1.26.0
+scipy>=1.13.0
+
+# Comunicación con Ollama
+requests>=2.31.0
